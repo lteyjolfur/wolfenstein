@@ -84,12 +84,12 @@ const drawRays3D = () => {
     ray.y = Math.floor(player.y/64)*64-0.0001
     ray.x = (player.y-ray.y)*atanRayAngle+player.x
     yOffset = -map.gridSize
-    xOffset = -map.gridSize*atanRayAngle
+    xOffset = -yOffset*atanRayAngle
  } else if(player.angle < Math.PI && player.angle > 0){
     ray.y = Math.floor(player.y/64)*64+64
     ray.x = ((player.y-ray.y)*atanRayAngle+player.x)
     yOffset = map.gridSize
-    xOffset = -map.gridSize*atanRayAngle
+    xOffset = -yOffset*atanRayAngle
   } else {
     ray.x = player.x
     ray.y = player.y
@@ -99,8 +99,8 @@ const drawRays3D = () => {
     mapCheck.x = Math.floor(ray.x/64)
     mapCheck.y = Math.floor(ray.y/64)
     mapCheck.point = mapCheck.y*map.x+mapCheck.x
-    console.log('ray.y',ray.y,'dof',depthOfField)
-    console.log(mapCheck,map.map[mapCheck.point])
+    // console.log('ray.y',ray.y,'dof',depthOfField)
+    // console.log(mapCheck,map.map[mapCheck.point])
     if(mapCheck.point < map.x*map.y && map.map[mapCheck.point]===1){ // hit wall
       console.log('found')
       depthOfField = 8
