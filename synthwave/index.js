@@ -218,13 +218,19 @@ const draw = () => {
   // Guide lines
     for(let i = 0; i<=map.x; i++){
     ctx.beginPath();
-    ctx.moveTo(WIDTH2+SCREEN2,HEIGHT2);
+    ctx.moveTo(WIDTH2+SCREEN2+ (i-4)*map.gridSize/4,HEIGHT2);
     ctx.lineTo(WIDTH2+i*map.gridSize,HEIGHT);
     ctx.stroke();
   }
+
+  // use tan formula to calculate the distance to the grid
+
   const half = map.x/2
   //debugger
-  for(let i = 0; i<=map.y*3; i++){
+  
+  const lastRow = Array(map.x).fill(0)
+  let lastLineBottom = 0
+  for(let i = 0; i<=map.y*2; i++){
     const yDist = gridSize * i - (HEIGHT-playerYRound)
     // 0.7**x-1
     const scalar = Math.pow(0.7,yDist/map.gridSize-1)
@@ -234,6 +240,7 @@ const draw = () => {
     const lineBottom = HEIGHT2+lineHeight
     //console.log(yDist)
     let xPosLast = 0
+    
     if (i === 0){
         console.log(yDist, lineHeight, lineBottom)
     }
@@ -245,10 +252,10 @@ const draw = () => {
         if(true){
             ctx.beginPath();
             if(xPosLast >0 ){
-                ctx.moveTo(xPosLast,lineBottom);
+                //ctx.moveTo(xPosLast,lineBottom);
             }
             //USE THIS LATER//ctx.moveTo(xPosLast,lineBottom);
-            if(j===half){
+            if(false){
                 ctx.lineTo(WIDTH2+gridSize*j,lineBottom);
                 xPosLast = xPos;
                 ctx.fillRect(WIDTH2+gridSize*j-2,lineBottom,5,5);
@@ -274,11 +281,19 @@ const draw = () => {
                 const slope = rise/run
                 const x = (lineBottom/map.gridSize)*slope-offset
                 const xScaled = SCREENR2+x*map.gridSize 
-                ctx.lineTo(xScaled,lineBottom);
-                xPosLast = xScaled;
+                //ctx.lineTo(xScaled,lineBottom);
+                
                 ctx.fillRect(xScaled-2,lineBottom-2,4,4);
+                //ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(lastRow[j],lastLineBottom);
+                ctx.lineTo(xScaled,lineBottom);
+                ctx.stroke();
+                xPosLast = xScaled;
+                lastRow[j] = xScaled
 
             }
+            lastLineBottom = lineBottom
             ctx.stroke();}
             
         }
