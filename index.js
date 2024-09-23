@@ -4,7 +4,15 @@ const pushKeys = {};
 const canvas = document.getElementById("tutorial");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
 let frames = 0;
-console.log(canvas.length);
+const degInRad = Math.PI / 180;
+
+const CANVAS = {
+  WIDTH: null,
+  HEIGHT: null,
+  WIDTH2: null,
+  HEIGHT2: null
+};
+
 
 const player = {
   x: 300,
@@ -12,7 +20,7 @@ const player = {
   dx: 5,
   dy: 0,
   z: 10,
-  angle: 0,
+  angle: 0.00000001,
   color:"rgba(255, 255, 0, 1)"
 }; 
 
@@ -21,6 +29,7 @@ const map = {
   y:8,
   gridSize:64,
   get cellSize() {return this.x * this.y;},
+  get mapHeight() {return this.x * this.gridSize;},
   wallColor:"rgba(200, 200, 200, 1)",
   floorColor:"rgba(0, 0, 0, 1)",
   map: [
@@ -33,6 +42,35 @@ const map = {
     1,0,0,0,0,0,0,1,
     1,1,1,1,1,1,1,1,
   ]
+};
+
+const projection3D = (ray,i,angle) => {
+  const DRAW_WIDTH = 8;
+  const {mapHeight} = map; 
+  const rectifiedDistance = ray.distance * Math.cos(player.angle - angle);
+  console.log('ray.angle',ray.angle, 'player.angle',player.angle);
+  console.log('dist',ray.distance);
+  // scaling to get a usable height hand tuned
+  const height = Math.min((mapHeight * 64) / rectifiedDistance, mapHeight);
+  const top = CANVAS.HEIGHT2 - height / 2;
+  const bottom = CANVAS.HEIGHT2 + height / 2;
+  console.log('top',top,'bottom',bottom); 
+  console.log('mapHeight',mapHeight,'height',height);
+  ctx.fillStyle = ray.isVertical ?  "rgba(255, 0, 0, 1)" : 'rgba(150, 0, 0, 1)';
+  ctx.fillRect(CANVAS.WIDTH2 + i * DRAW_WIDTH, top, 8 * DRAW_WIDTH, height);
+};
+
+const drawCeiling = () => {
+  const fillStyle = ctx.fillStyle;
+  ctx.fillStyle = "rgba(59,59, 59, 1)"; // #3B3B3B
+  ctx.fillRect(CANVAS.WIDTH2, 0, CANVAS.WIDTH, CANVAS.HEIGHT2); // #737373
+  ctx.fillStyle = fillStyle;
+};
+const drawFloor = () => {
+  const fillStyle = ctx.fillStyle;
+  ctx.fillStyle = "rgba(115, 115, 115, 1)";
+  ctx.fillRect(CANVAS.WIDTH2, CANVAS.HEIGHT / 2, CANVAS.WIDTH, CANVAS.HEIGHT);
+  ctx.fillStyle = fillStyle;
 };
 
 /*
@@ -63,14 +101,9 @@ const handleKey = (e,set) => {
 document.addEventListener('keydown',(e)=>handleKey(e,true));
 document.addEventListener('keyup',(e)=>handleKey(e,false));
 
-const drawRays3D = () => {
+const calcRays3D = (angle) => {
   const ray = {
-    angle: player.angle,
-    x: 0,
-    y: 0
-  };
-  const mapCheck = {
-    point: 0,
+    angle,
     x: 0,
     y: 0
   };
@@ -93,20 +126,15 @@ const drawRays3D = () => {
    * @returns {number} y - The final y-coordinate of the ray.
    * @returns {number} depthOfField - The final depth of field value.
    */
-  const collisionLoop = (ray, xOffset, yOffset, depthOfField) => {
+  const collisionLoop = (ray, xOffset, yOffset, depthOfField, isVertical) => {
     let hitDepth = 8;
     let distance = 999999;
     while(depthOfField < 8){
-      mapCheck.x = Math.floor(ray.x / gridSize);
-      mapCheck.y = Math.floor(ray.y / gridSize);
-      const point = mapCheck.y * map.x + mapCheck.x;
-      // console.log('ray.y',ray.y,'dof',depthOfField);
-      // console.log(mapCheck,map.map[mapCheck.point]);
+      const x = Math.floor(ray.x / gridSize);
+      const y = Math.floor(ray.y / gridSize);
+      const point = y * map.x + x;
       if(point < map.x * map.y && map.map[point] === 1){ // hit wall
-        // console.log('point',mapCheck.point);
-        // console.log('found');
         hitDepth = depthOfField;
-        
         depthOfField = 8;
       } else {
         ray.x += xOffset;
@@ -114,8 +142,9 @@ const drawRays3D = () => {
         depthOfField += 1;
       }
     }
+    // pythagorean theorem
     distance = Math.sqrt(Math.pow(ray.x - player.x, 2) + Math.pow(ray.y - player.y, 2));
-    return {x: Math.round(ray.x), y: Math.round(ray.y), hitDepth, distance};
+    return {x: Math.round(ray.x), y: Math.round(ray.y), hitDepth, distance, isVertical};
   };
 
   
@@ -131,22 +160,21 @@ const drawRays3D = () => {
     ray.x = (player.y - ray.y) * atanRayAngle + player.x;
     yOffset = -gridSize;
     xOffset = -yOffset * atanRayAngle;
+
     // looking down
   } else if(player.angle < Math.PI && player.angle > 0){
     ray.y = Math.floor(player.y / gridSize) * gridSize + gridSize;
     ray.x = ((player.y - ray.y) * atanRayAngle + player.x);
     yOffset = gridSize;
     xOffset = -yOffset * atanRayAngle;
-    console.log('2');
+
   } else { // looking horizontally no horizontal hits to check
-    console.log('3');
     ray.x = player.x;
     ray.y = player.y;
     depthOfField = 8;
   }
 
-  const horizontalRay = collisionLoop(ray, xOffset, yOffset, depthOfField);
-  const hit = {x: ray.x, y: ray.y};
+  const horizontalRay = collisionLoop(ray, xOffset, yOffset, depthOfField,false);
 
   depthOfField = 0;
   const nTan = -Math.tan(ray.angle);
@@ -155,11 +183,10 @@ const drawRays3D = () => {
   if( player.angle > Math.PI / 2 && player.angle < 3 * Math.PI / 2){
     ray.x =   Math.floor(player.x / gridSize) * gridSize - 0.0001; // this should never be 0
     ray.y = (player.x - ray.x) * nTan + player.y;
-    console.log(ray.x,ray.y);
 
     xOffset = -gridSize;
     yOffset = -xOffset * nTan;
-    console.log('looking left');
+
     // looking right
   } else if(player.angle < Math.PI / 2 || player.angle > 3 * Math.PI / 2){
     ray.x = Math.floor(player.x / gridSize) * gridSize + gridSize;
@@ -167,44 +194,40 @@ const drawRays3D = () => {
 
     xOffset = gridSize;
     yOffset = -xOffset * nTan;
-    console.log('looking right');
+
   } else { // looking vertically nothing to check
     ray.x = player.x;
     ray.y = player.y;
     depthOfField = 8;
   }
 
-  const verticalRay = collisionLoop(ray, xOffset, yOffset, depthOfField);
+  const verticalRay = collisionLoop(ray, xOffset, yOffset, depthOfField,true);
 
-
-
-  ray.a = Math.round(ray.x);
-  ray.b = Math.round(ray.y);
-  ray.x = Math.round(hit.x);
-  ray.y = Math.round(hit.y);
-
-  return verticalRay.distance < horizontalRay.distance ? verticalRay : horizontalRay;
-  // if (ray.hDepth < ray.vDepth){
-  //   return {x: ray.x, y: ray.y};
-  // } else {
-  //   return {x: ray.a, y: ray.b};
-  // }
-  // return horizontalRay;
-  // return verticalRay;
-  
+  return verticalRay.distance < horizontalRay.distance ? verticalRay : horizontalRay;  
 };
 
 // petrea elskar eyjolfinn sinn
 
+
+let isFirstRender = true;
 const draw = () => {
 
   if (!canvas.getContext) {
     return;
   }
-  const WIDTH = canvas.width;
-  // const WIDTH2 = WIDTH / 2;
-  const HEIGHT = canvas.height;
-  // const HEIGHT2 = HEIGHT / 2;
+
+  // Make available in global scope
+  if (isFirstRender) {
+    isFirstRender = false;
+    CANVAS.WIDTH = canvas.width;
+    CANVAS.HEIGHT = canvas.height;
+    CANVAS.WIDTH2 = CANVAS.WIDTH / 2;
+    CANVAS.HEIGHT2 = CANVAS.HEIGHT / 2;
+  }
+
+  const {WIDTH, HEIGHT/* ,HEIGHT2,WIDTH2*/} = CANVAS;
+
+
 
 
 
@@ -272,6 +295,15 @@ const draw = () => {
     ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 1, cellSize - 1);
   });
 
+  const drawRays3D = (ray) => {
+    ctx.beginPath();
+    ctx.moveTo(playerXRound, playerYRound);
+    ctx.lineTo(ray.x, ray.y);
+    ctx.stroke();
+  };
+
+
+
   // Draw player
   const playerXRound = Math.round(player.x);
   const playerYRound = Math.round(player.y);
@@ -282,12 +314,31 @@ const draw = () => {
   ctx.lineTo(player.x + Math.floor(player.dx * 5), player.y + Math.floor(player.dy * 5));
   ctx.stroke();
 
-  const ray = drawRays3D();
-  // console.log(ray)
-  ctx.beginPath();
-  ctx.moveTo(playerXRound, playerYRound);
-  ctx.lineTo(ray.x, ray.y);
-  ctx.stroke();
+
+
+
+  drawCeiling();
+  drawFloor();
+
+  const rayArray = Array.from({length:64}, (_ ,i)=>{
+    let angle = player.angle - 30 * degInRad + i * degInRad;
+    if (angle < 0) {
+      angle += 2 * Math.PI;
+    } else if (angle > 2 * Math.PI) {
+      angle -= 2 * Math.PI;
+    }
+    return angle;
+  });
+
+  rayArray.forEach((angle,i)=>{
+    const ray = calcRays3D(angle);
+    drawRays3D(ray);
+    console.log('ray',ray);
+    projection3D(ray,i,angle);
+  });
+
+
+
 
   // ctx.beginPath();
   // ctx.strokeStyle = "rgba(0, 255, 0, 0.5)";
@@ -298,30 +349,7 @@ const draw = () => {
 
   ctx.fillRect(player.x - 2,player.y - 2,5,5);
 
-
-  // wall
-  // const x1 = 40-player.x
-  // const x2 = 40-player.x
-  // const y1 = 10-player.y
-  // const y2 = 290-player.y
-  // const cosN = cos(player.angle)
-  // const sinN = sin(player.angle)
-
-  // wall.x[0] = x1*cosN - y1*sinN
-  // wall.x[1] = x2*cosN - y2*sinN
-
-  // wall.y[0] = x1*cosN + y1*sinN
-  // wall.y[1] = x2*cosN + y1*sinN
-
-  // ctx.fillStyle = "rgba(0, 0, 200, 0.5)";
-  // ctx.fillRect(wall.x[0], wall.y[0], 4, 4);
-  // console.log(wall.x[0],wall.y[0])
-
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-
-
-
 
 
   // const data = imageData.data;
