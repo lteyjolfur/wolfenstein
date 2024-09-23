@@ -10,7 +10,8 @@ const WIDTH2 = WIDTH/2
 const SCREEN2 = WIDTH/4
 const HEIGHT = canvas.height;
 const HEIGHT2 = HEIGHT/2
-const SCREENR2 = WIDTH2+SCREEN2
+const VPOINT = HEIGHT*0.3  // Vanishing point
+//const SCREENR2 = WIDTH2+SCREEN2
 
 console.log(WIDTH,HEIGHT)
 
@@ -42,28 +43,37 @@ const map = {
   ]
 }
 
-
-
-/*
-const drawMap2d = () => {
-  ctx.fillRect(player.x+10,player.y,4,4);
-  const {gridSize,wallColor,floorColor} = map;
-  console.log(gridSize,wallColor,floorColor)
-  map.map.forEach((wall,index)=>{
-    //console.log(wall)
-    const x = index%map.x
-    const y = Math.floor(index/map.y)
-    ctx.fillColor = wall ? wallColor : floorColor
-    ctx.fillRect(x, y, gridSize, gridSize);
-  })
+const lineThroughPoints = (point1,point2) => {
+  const [x1, y1] = point1;
+  const [x2, y2] = point2;
+  // Calculate slope
+  let slope;
+  if (x2 - x1 === 0) {  // Handle vertical line case
+      slope = 0;
+  } else {
+      slope = (y2 - y1) / (x2 - x1);
+  }
+  
+  // Calculate y-intercept
+  let intercept;
+  if (slope === null) {  // Handle vertical line case
+      intercept = x1;
+  } else {
+      intercept = y1 - slope * x1;
+  }
+  return {slope, intercept};
 }
-*/
-/*
-const wall = {
-  x: Array(4),
-  y: Array(4),
-  z: Array(4)
-}*/
+
+const lineFromEq = (slope,intercept,level=0) => {
+  const prevColor = ctx.strokeStyle
+  ctx.strokeStyle = "rgb(128, 0, 128)";
+  ctx.beginPath();
+  ctx.moveTo(intercept+slope*(HEIGHT-(100*level)),HEIGHT-(100*level));
+  ctx.lineTo(intercept+slope*0.3*HEIGHT,0.3*HEIGHT);
+  ctx.stroke();
+  ctx.strokeStyle = prevColor;
+}
+
 
 const handleKey = (e,set) => {
   pushKeys[e.key] = set
@@ -131,6 +141,35 @@ const drawRays3D = () => {
 
 //petrea elskar eyjolfinn sinn
 
+// make guide lines formulas
+
+const guideLines = []
+ctx.fillStyle = "rgba(100, 100, 100, 1)";
+ctx.fillRect(0,0,WIDTH,HEIGHT);
+ctx.fillStyle = "rgba(200, 200, 200, 1)";
+ctx.fillRect(WIDTH2,0,WIDTH,HEIGHT);
+
+for(let i = 0; i<=map.x; i++){
+  const point1 = [VPOINT,WIDTH2+SCREEN2] // use to adjust line
+  const point2 = [HEIGHT,WIDTH2+i*map.gridSize] // lower point
+  guideLines.push(lineThroughPoints(point1,point2))
+}
+for(let i = 0; i<=map.x; i++){
+  const point1 = [VPOINT,WIDTH2+SCREEN2] // use to adjust line
+  const point2 = [HEIGHT-100,WIDTH2+i*map.gridSize] // lower point
+  guideLines.push(lineThroughPoints(point1,point2))
+  const {slope,intercept} = guideLines[map.x+i]
+  lineFromEq(slope,intercept,1)
+}
+
+console.log(guideLines)
+guideLines.forEach(({slope,intercept})=>{
+  //lineFromEq(slope,intercept)
+})
+
+debugger;
+
+/// BEGIN DRAW 
 const draw = () => {
 
   if (!canvas.getContext) {
@@ -173,10 +212,6 @@ const draw = () => {
   ctx.fillRect(0,0,WIDTH,HEIGHT);
 
 
-  // const dx=sin(player.angle)*10;
-  // const dy=cos(player.angle)*10;
-
-
   ctx.fillStyle = "rgba(0, 0, 200, 0.5)";
   ctx.fillRect(frames++%WIDTH, 0, 4, 4);
 
@@ -184,7 +219,7 @@ const draw = () => {
   // draw map
   const {gridSize,wallColor,floorColor} = map;
   map.map.forEach((wall,index)=>{
-    const x = index%map.x
+    const x = index%map.x-1
     const y = Math.floor(index/map.y)
     ctx.fillStyle = wall ? wallColor : floorColor
     ctx.fillRect(x*gridSize+1, y*gridSize+1, gridSize-1, gridSize-1);
@@ -216,21 +251,24 @@ const draw = () => {
 
   // 3dmode
   // Guide lines
+  
     for(let i = 0; i<=map.x; i++){
-    ctx.beginPath();
-    ctx.moveTo(WIDTH2+SCREEN2+ (i-4)*map.gridSize/4,HEIGHT2);
-    ctx.lineTo(WIDTH2+i*map.gridSize,HEIGHT);
-    ctx.stroke();
+      // const point1 = [WIDTH2+SCREEN2+ (i-4)*map.gridSize/4,HEIGHT2]
+      // const point2 = [WIDTH2+i*map.gridSize,HEIGHT] // lower point
+      
+      // ctx.beginPath();
+      // ctx.moveTo(point1[0],point1[1]);
+      // ctx.lineTo(point2[0],point2[1]);
+      // ctx.stroke();
   }
 
-  // use tan formula to calculate the distance to the grid
 
-  const half = map.x/2
   //debugger
   
   const lastRow = Array(map.x).fill(0)
   let lastLineBottom = 0
-  for(let i = 0; i<=map.y*2; i++){
+  let lastX = 0
+  for(let i = 0; i<map.y*3; i++){
     const yDist = gridSize * i - (HEIGHT-playerYRound)
     // 0.7**x-1
     const scalar = Math.pow(0.7,yDist/map.gridSize-1)
@@ -245,60 +283,39 @@ const draw = () => {
         console.log(yDist, lineHeight, lineBottom)
     }
     for(let j = 0; j<=map.x; j++){
-    if(lineBottom < HEIGHT){
-        const xPos = WIDTH2+gridSize*j
-        // -2 = shift 2 to left 
-        
-        if(true){
-            ctx.beginPath();
-            if(xPosLast >0 ){
-                //ctx.moveTo(xPosLast,lineBottom);
-            }
-            //USE THIS LATER//ctx.moveTo(xPosLast,lineBottom);
-            if(false){
-                ctx.lineTo(WIDTH2+gridSize*j,lineBottom);
-                xPosLast = xPos;
-                ctx.fillRect(WIDTH2+gridSize*j-2,lineBottom,5,5);
-            } else if(false){
-                const offset = j-half
-                const xIntersect = offset;
-                const run = HEIGHT2/map.gridSize;
-                const rise = xIntersect
-                const slope = rise/run
-                const x = (lineBottom/map.gridSize)*slope-offset
-                //xPosLast = x;
-                //ctx.lineTo(SCREENR2-x*map.gridSize,lineBottom);
-                const xScaled = SCREENR2+x*map.gridSize 
-                ctx.lineTo(xScaled,lineBottom);
-                xPosLast = xScaled;
-                ctx.fillRect(xScaled-2,lineBottom,5,5);
-            } else{
-                //debugger
-                const offset = j-half
-                const xIntersect = offset;
-                const run = HEIGHT2/map.gridSize;
-                const rise = xIntersect
-                const slope = rise/run
-                const x = (lineBottom/map.gridSize)*slope-offset
-                const xScaled = SCREENR2+x*map.gridSize 
-                //ctx.lineTo(xScaled,lineBottom);
-                
-                ctx.fillRect(xScaled-2,lineBottom-2,4,4);
-                //ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(lastRow[j],lastLineBottom);
-                ctx.lineTo(xScaled,lineBottom);
-                ctx.stroke();
-                xPosLast = xScaled;
-                lastRow[j] = xScaled
-
-            }
-            lastLineBottom = lineBottom
-            ctx.stroke();}
-            
+    if(true){
+        const {slope,intercept} = guideLines[j]
+        const x = intercept+slope*lineBottom
+        ctx.fillRect(intercept+slope*lineBottom-2,lineBottom-2,4,4);
+        // horizontal line
+        if(j > 0) {
+          ctx.beginPath();
+          ctx.moveTo(lastX,lineBottom);
+          ctx.lineTo(intercept+slope*lineBottom,lineBottom);
+          ctx.stroke()
         }
-        
+        // vertical line
+        if(i > 0 && lastRow[j] > 0) {
+          const lastStroke = ctx.strokeStyle
+          ctx.strokeStyle = "rgb(160, 0, 160)";
+          ctx.beginPath();
+          ctx.moveTo(lastRow[j],lastLineBottom);
+          ctx.lineTo(intercept+slope*lineBottom,lineBottom);
+          ctx.stroke()
+          ctx.strokeStyle = lastStroke
+        }
+
+
+      lastRow[j] = x
+      lastX = x
+     
+          
+      }
+      if(j === map.x){
+        lastLineBottom = lineBottom
+      }
     }
+
 
   }
 
@@ -347,3 +364,26 @@ const draw = () => {
 }
 
 window.onload = setInterval(draw,1000/30)
+
+
+                // debugger
+                // GÖMul leið til að reikna línur
+                // veit ekki hvernig þetta virkaði
+                // const xIntersect = j-half;
+                // const run = HEIGHT2/map.gridSize; // 4
+
+                // //const run = j-half
+                // const rise = xIntersect //- (4-j/4)
+                // const slope = rise/run
+                // const x = (lineBottom/map.gridSize)*slope-xIntersect
+                // const xScaled = SCREENR2+x*map.gridSize 
+                // //ctx.lineTo(xScaled,lineBottom);
+                
+                // ctx.fillRect(xScaled-2,lineBottom-2,6,6);
+                //ctx.stroke();
+                //ctx.beginPath();
+                //ctx.moveTo(lastRow[j],lastLineBottom);
+                //ctx.lineTo(xScaled,lineBottom);
+                //ctx.stroke();
+                //xPosLast = xScaled;
+                //lastRow[j] = xScaled
