@@ -1,6 +1,10 @@
 # wolfenstein
 
+[![Build and deploy](https://github.com/lteyjolfur/wolfenstein/actions/workflows/deploy.yml/badge.svg)](https://github.com/lteyjolfur/wolfenstein/actions/workflows/deploy.yml)
+
 A Wolfenstein 3D-style raycaster written in vanilla JavaScript on an HTML canvas, with no engine and no runtime dependencies.
+
+**[Play it in the browser](https://lteyjolfur.github.io/wolfenstein/)** · [synthwave experiment](https://lteyjolfur.github.io/wolfenstein/synthwave/)
 
 ![Top-down map with the player's ray fan on the left, the projected 3D view on the right](docs/screenshot.png)
 
@@ -38,6 +42,10 @@ npm run dev
 | `npm run preview` | Serve the production build                        |
 | `npm run lint`    | ESLint                                            |
 
+Pushes to `main` are linted, built and deployed to GitHub Pages by `.github/workflows/deploy.yml`. Pull requests are linted and built but not deployed.
+
 ## Credits
 
 The raycasting approach is based on Fabien Sanglard's [*Game Engine Black Book: Wolfenstein 3D*](https://fabiensanglard.net/gebbwolf3d/), which explains how the original 1992 engine works.
+
+The ray-stepping code (separate horizontal and vertical grid checks, depth-of-field limit, fisheye fix) follows [3DSage](https://www.youtube.com/@3DSage)'s *Make Your Own Raycaster* video series on YouTube.
