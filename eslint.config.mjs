@@ -3,7 +3,10 @@ import pluginJs from "@eslint/js";
 
 
 export default [
-  {languageOptions: { globals: globals.browser }},
+  // dist is build output; index-doom.js and synthwave/ are unfinished experiments
+  { ignores: ["dist/", "index-doom.js", "synthwave/"] },
+  { languageOptions: { globals: globals.browser } },
+  { files: ["vite.config.js"], languageOptions: { globals: globals.node } },
   pluginJs.configs.recommended,
   {
     rules: {

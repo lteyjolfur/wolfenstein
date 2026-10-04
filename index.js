@@ -5,7 +5,6 @@ const canvas = document.getElementById("tutorial");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
 let frames = 0;
 const degInRad = Math.PI / 180;
-const radInDeg = 180 / Math.PI;
 
 const CANVAS = {
   WIDTH: null,
@@ -324,7 +323,6 @@ const draw = () => {
       angle -= 2 * Math.PI;
     }
     if(i === 0){
-      console.log('angle',angle * radInDeg);
       ctx.beginPath();
       ctx.strokeStyle = "rgba(0, 255, 0, 1)";
       ctx.moveTo(playerXRound, playerYRound);
@@ -350,4 +348,4 @@ const draw = () => {
   ctx.putImageData(imageData, 0, 0);
 };
 
-window.onload = setInterval(draw,1000 / 30);
+setInterval(draw, 1000 / 30);
