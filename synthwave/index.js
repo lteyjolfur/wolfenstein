@@ -363,7 +363,7 @@ const draw = () => {
   ctx.putImageData(imageData, 0, 0);
 }
 
-window.onload = setInterval(draw,1000/30)
+setInterval(draw, 1000 / 30);
 
 
                 // debugger
