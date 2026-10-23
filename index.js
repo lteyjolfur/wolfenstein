@@ -1,5 +1,7 @@
 'use strict';
 
+import { isWall, resolveCollision, wrapAngle } from "./src/logic.js";
+
 const pushKeys = {};
 const canvas = document.getElementById("tutorial");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -33,9 +35,7 @@ const player = {
   angle: 0.00000001,
   color: colors.YELLOW,
   checkCollision: function(x,y){
-    const mapX = Math.floor(x / map.gridSize);
-    const mapY = Math.floor(y / map.gridSize);
-    return map.map[mapX + map.y * mapY] === 1;
+    return isWall(map, x, y);
   }
 }; 
 
@@ -249,7 +249,7 @@ const draw = () => {
   case pushKeys.q:
   case pushKeys.a:
     player.angle -= 0.1;
-    player.angle = player.angle < 0 ? player.angle + (2 * Math.PI) : player.angle;
+    player.angle = wrapAngle(player.angle);
     player.dx = Math.cos(player.angle) * 5;
     player.dy = Math.sin(player.angle) * 5;
     break;
@@ -257,7 +257,7 @@ const draw = () => {
   case pushKeys.d:
       
     player.angle += 0.1;
-    player.angle = player.angle > 2 * Math.PI ? player.angle - (2 * Math.PI) : player.angle;
+    player.angle = wrapAngle(player.angle);
     player.dx = Math.cos(player.angle) * 5;
     player.dy = Math.sin(player.angle) * 5;
     break;           
@@ -266,18 +266,10 @@ const draw = () => {
   }
 
   // is player inside a wall
-  if(player.checkCollision(player.x,player.y)){
-    // the player will be inside a wall
-    // check if the player should wallslide
-    if(!player.checkCollision(player.x,prevY)){
-      player.y = prevY;
-    } else if (!player.checkCollision(prevX,player.y)){
-      player.x = prevX;
-    } else {
-      player.x = prevX;
-      player.y = prevY; 
-    }
-  }
+  // if so, wallslide along the free axis or revert the move
+  const resolved = resolveCollision(map, player.x, player.y, prevX, prevY);
+  player.x = resolved.x;
+  player.y = resolved.y;
 
   ctx.fillStyle = "rgba(100, 100, 100, 1)";
   ctx.fillRect(0,0,WIDTH,HEIGHT);
@@ -316,12 +308,7 @@ const draw = () => {
   drawFloor();
 
   Array.from({length:64}, (_ ,i)=>{
-    let angle = player.angle - 30 * degInRad + i * degInRad;
-    if (angle < 0) {
-      angle += 2 * Math.PI;
-    } else if (angle > 2 * Math.PI) {
-      angle -= 2 * Math.PI;
-    }
+    const angle = wrapAngle(player.angle - 30 * degInRad + i * degInRad);
     if(i === 0){
       ctx.beginPath();
       ctx.strokeStyle = "rgba(0, 255, 0, 1)";
